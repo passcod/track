@@ -18,8 +18,16 @@ helpers do
     DB[:things].where(user_id: user_id)
   end
 
-  def points_of_thing(thing_id)
-    DB[:points].where(thing_id: thing_id).order_by(:created)
+  def points_of_thing(thing_id, opts = {})
+    limit = opts[:no_limit] ? nil : (opts[:limit] || 500)
+    range = opts[:no_range] ? nil : (opts[:range] || '12 hour')
+
+    q = DB[:points].where(thing_id: thing_id).order_by(:created)
+
+    q = q.limit(limit) if limit
+    q = q.where { created > now() - Sequel.lit('interval') range } if range
+
+    q
   end
 
   def data_of_thing(thing_id)
