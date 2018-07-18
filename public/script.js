@@ -14,6 +14,9 @@ function makeGraph (target, title, data) {
     data,
     target,
     width,
+    interpolate: d3.curveLinear,
+    missing_is_hidden: true,
+    missing_text: 'No data (yet?).',
     height: 200,
     x_accessor: 'date',
     y_accessor: 'value'
