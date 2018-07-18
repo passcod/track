@@ -10,14 +10,15 @@ main.container { max-width: var(--breakpoint-md); }
   border-left: 1px solid var(--primary);
 }
 
-
-:root { --breakpoint-now: var(--breakpoint-md); }
-
-@media (max-width: var(--breakpoint-xs)) {
-  :root { --breakpoint-now: var(--breakpoint-xs); }
+@media (min-width: 768px) {
+  :root { --breakpoint-now: var(--breakpoint-md); }
 }
 
-@media (max-width: var(--breakpoint-sm)) {
+@media (min-width: 577px) and (max-width: 767px) {
   :root { --breakpoint-now: var(--breakpoint-sm); }
+}
+
+@media (min-width: 324px) and (max-width: 576px) {
+  :root { --breakpoint-now: 324px; }
 }
 
