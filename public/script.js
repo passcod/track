@@ -1,9 +1,5 @@
 'use strict'
 
-function rem2px (rem) {
-  return rem * parseFloat(getComputedStyle(document.documentElement).fontSize)
-}
-
 function makeGraph (target, title, data) {
   for (const dat of data) if (!(dat.date instanceof Date)) dat.date = new Date(dat.date)
 
@@ -24,12 +20,33 @@ function makeGraph (target, title, data) {
   })
 }
 
-window.addEventListener('load', () =>
-  Array.from(document.getElementsByClassName('thing')).forEach(thing => {
-    const dataScript = thing.querySelector('script.data')
-    const initial = JSON.parse(dataScript.innerHTML)
+const allData = new Map
+function refreshAllUsing (dataFn) {
+  Array.from(document.getElementsByClassName('thing')).forEach(async thing => {
     const target = thing.querySelector('.graph')
-    dataScript.remove()
-    makeGraph(target, thing.dataset.title, initial)
+    makeGraph(target, thing.dataset.title, (await dataFn(thing)) || allData.get(thing) || [])
   })
-)
+}
+
+window.addEventListener('load', () => refreshAllUsing(thing => {
+  const dataScript = thing.querySelector('script.data')
+  const initial = JSON.parse(dataScript.innerHTML)
+  dataScript.remove()
+  allData.set(thing, initial)
+  return initial
+}))
+
+window.addEventListener('resize', () => {
+  if (allData.size < 1) return;
+  refreshAllUsing(() => 0)
+})
+
+setInterval(() => refreshAllUsing(async thing => {
+  const topic = thing.dataset.name
+  const user = thing.dataset.user
+  const url = `/@${user}/${topic}`
+  const json = await fetch(url, { headers: { Accept: 'application/json' } })
+  const data = (await json.json()).points
+  allData.set(thing, data)
+  return data
+}), 60000)
