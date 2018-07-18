@@ -1,0 +1,14 @@
+%div.row
+  %h1.col= "Tracking #{@title}"
+
+- @things.each do |thing|
+  %section.row.thing.no-gutters{'data-name': thing[:name], 'data-title': pretty_name(thing[:name])}
+    %div.col.graph
+      %script.data{type: 'application/json'}
+        = JSON.generate(data_of_thing(thing[:id]))
+    %div.col-1
+      %a.open-thing{href: "/@#{@user[:name]}/#{thing[:name]}"}
+        %strong →
+        %span.sr-only
+          Open only
+          = pretty_name thing[:name]

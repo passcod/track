@@ -5,59 +5,84 @@ configure do
   DB = Sequel.connect ENV['DATABASE_URL']
 end
 
+helpers do
+  def user_by_name(name)
+    DB[:users].where(name: name).first
+  end
+
+  def thing_by_name(user_id, name)
+    DB[:things].where(user_id: user_id, name: name).first
+  end
+
+  def things_of_user(user_id)
+    DB[:things].where(user_id: user_id)
+  end
+
+  def points_of_thing(thing_id)
+    DB[:points].where(thing_id: thing_id).order_by(:created)
+  end
+
+  def data_of_thing(thing_id)
+    points_of_thing(thing_id)
+      .select(:value, :created)
+      .map { |p| { date: p[:created].iso8601, value: p[:value] } }
+  end
+
+  def pretty_name(name)
+    name.gsub('-', ' ').capitalize
+  end
+end
+
 get '/' do
-  redirect '/@felix', 307
+  @users = DB[:users]
+  if @users.count == 1
+    redirect "/@#{@users.first[:name]}", 307
+  else
+    haml :index
+  end
 end
 
 get '/@:user', provides: 'html' do
-  @user = DB[:users].where(name: params['user']).first
+  @user = user_by_name(params['user'])
   halt 404 if @user.nil?
 
-  @things = DB[:things].where(user_id: @user[:id])
-
+  @title = "#{pretty_name @user[:name]}’s things"
+  @things = things_of_user(@user[:id])
   haml :user
 end
 
 get '/@:user', provides: 'json' do
   content_type :json
-  @user = DB[:users].where(name: params['user']).first
+  @user = user_by_name(params['user'])
   halt 404 if @user.nil?
 
   JSON.generate(
-    things: DB[:things]
+    things: things_of_user(@user[:id])
       .select(:name)
-      .where(user_id: @user[:id])
       .map { |t| t[:name] }
   )
 end
 
 get '/@:user/:thing', provides: 'html' do
-  @user = DB[:users].where(name: params['user']).first
+  @user = user_by_name(params['user'])
   halt 404 if @user.nil?
 
-  @thing = DB[:things].where(user_id: @user[:id], name: params['thing']).first
+  @thing = thing_by_name(@user[:id], params['thing'])
   halt 404 if @thing.nil?
 
-  @points = DB[:points].where(thing_id: @thing[:id]).order_by(:created)
-
+  @title = "#{pretty_name @user[:name]}’s thing: #{pretty_name @thing[:name]}"
   haml :thing
 end
 
 get '/@:user/:thing', provides: 'json' do
   content_type :json
-  @user = DB[:users].where(name: params['user']).first
+  @user = user_by_name(params['user'])
   halt 404 if @user.nil?
 
-  @thing = DB[:things].where(user_id: @user[:id], name: params['thing']).first
+  @thing = thing_by_name(@user[:id], params['thing'])
   halt 404 if @thing.nil?
 
-  JSON.generate(
-    points: DB[:points]
-      .select(:value, :created)
-      .where(thing_id: @thing[:id])
-      .order_by(:created)
-      .map { |p| { date: p[:created].iso8601, value: p[:value] } }
-  )
+  JSON.generate(points: data_of_thing(@thing[:id]))
 end
 
 post '/@:user/:thing' do
@@ -75,12 +100,12 @@ post '/@:user/:thing' do
   key, code = auth.split('.')
   halt 400, 'also bad' if key.nil? || code.nil? || key.length != 64 || code.length < 5
 
-  @user = DB[:users].where(name: params['user']).first
+  @user = user_by_name(params['user'])
   halt 404, 'no' if @user.nil?
   halt 403, 'nope' if @user[:key] != key
   halt 403, 'nuh-uh' unless TOTP.valid?(@user[:secret], code.to_i)
 
-  @thing = DB[:things].where(user_id: @user[:id], name: params['thing']).first
+  @thing = thing_by_name(@user[:id], params['thing'])
   if @thing.nil?
     id = DB[:things].insert(user_id: @user[:id], name: params['thing'])
     @thing = DB[:things].where(id: id).first
