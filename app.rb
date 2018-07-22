@@ -25,15 +25,24 @@ helpers do
     q = DB[:points].where(thing_id: thing_id).order_by(:created)
 
     q = q.limit(limit) if limit
-    #q = q.where { created > now() - Sequel.lit('interval') range } if range
+    q = q.where { created > Sequel.function(:now) - Sequel.lit('interval ?', range) } if range
 
     q
   end
 
-  def data_of_thing(thing_id)
-    points_of_thing(thing_id)
-      .select(:value, :created)
-      .map { |p| { date: p[:created].iso8601, value: p[:value] } }
+  def data_of_thing(thing_id, opts = {})
+    no_auto = opts[:no_auto]
+
+    if no_auto
+      points_of_thing(thing_id, opts)
+        .select(:value, :created)
+        .map { |p| { date: p[:created].iso8601, value: p[:value] } }
+    else
+      ranged = data_of_thing(thing_id, no_auto: true, no_limit: true)
+      return ranged unless ranged.empty?
+
+      data_of_thing(thing_id, no_auto: true, no_range: true)
+    end
   end
 
   def pretty_name(name)
