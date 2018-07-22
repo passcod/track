@@ -27,7 +27,8 @@ const allData = new Map
 function refreshAllUsing (dataFn) {
   Array.from(document.getElementsByClassName('thing')).forEach(async thing => {
     const target = thing.querySelector('.graph')
-    makeGraph(target, thing.dataset.title, (await dataFn(thing)) || allData.get(thing) || [])
+    const name = thing.dataset.name
+    makeGraph(target, thing.dataset.title, (await dataFn(thing)) || allData.get(name) || [])
   })
 }
 
@@ -35,7 +36,7 @@ window.addEventListener('load', () => refreshAllUsing(thing => {
   const dataScript = thing.querySelector('script.data')
   const initial = JSON.parse(dataScript.innerHTML)
   dataScript.remove()
-  allData.set(thing, initial)
+  allData.set(thing.dataset.name, initial)
   return initial
 }))
 
@@ -50,6 +51,6 @@ setInterval(() => refreshAllUsing(async thing => {
   const url = `/@${user}/${topic}`
   const json = await fetch(url, { headers: { Accept: 'application/json' } })
   const data = (await json.json()).points
-  allData.set(thing, data)
+  allData.set(topic, data)
   return data
 }), 60000)
