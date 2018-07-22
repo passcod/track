@@ -19,13 +19,13 @@ helpers do
   end
 
   def points_of_thing(thing_id, opts = {})
-    limit = opts[:no_limit] ? nil : (opts[:limit] || 500)
+    limit = opts[:no_limit] ? nil : (opts[:limit] || 100)
     range = opts[:no_range] ? nil : (opts[:range] || '12 hour')
 
     q = DB[:points].where(thing_id: thing_id).order_by(:created)
 
     q = q.limit(limit) if limit
-    q = q.where { created > now() - Sequel.lit('interval') range } if range
+    #q = q.where { created > now() - Sequel.lit('interval') range } if range
 
     q
   end
